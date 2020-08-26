@@ -1,0 +1,122 @@
+---
+title: "Analyzing Bubble 3-Point Shooting"
+author: "Are NBA teams actually shooting better in the NBA bubble?"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r, include = F}
+library(tidyverse)
+library(rvest)
+library(knitr)
+options(stringsAsFactors = F)
+bub = read.csv("bubbleshooting.csv")[,-1]
+bub2 = bub %>% mutate(X2P = XFG - X3P, X2PA = XFGA - X3PA, X3P. = X3P/X3PA, XFG. = XFG/XFGA, X2P. = X2P/X2PA)
+for (i in 1:nrow(bub2)){
+  if (i %% 2 == 0){
+    bub2$diff3P[i] = 100*(bub2$X3P.[i] - bub2$X3P.[i-1])
+  } else{
+    bub2$diff3P[i] = 0
+  }
+}
+bub2 = bub2 %>% filter(Bubble == "Yes")
+bub2 = bub2 %>% arrange(desc(diff3P))
+bub2$Tm = factor(bub2$Tm, levels = rev(bub2$Tm))
+bub2$col = ifelse(bub2$diff3P > 0, "Better", "Worse")
+bub2$col = factor(bub2$col, levels = c("Worse", "Better"))
+
+```
+
+
+### Hypothesis
+
+On March 11, 2020, the NBA season was suspended indefinitely due to the emergence of COVID-19, and many speculated that the shutdown could prevent the NBA from ever officially finishing the 2019-20 Season. To the surprise of many, the NBA formed a radical plan: they would invite a 22-team subset of NBA franchises, those most likely to have a chance at making the playoffs, to a "bubble" in Orlando, Florida, where they could test the players regularly and isolate them from the outside world, minimizing the risk of COVID-19; the teams would play all of the remaining games in one location.
+
+So far, the plan has been a huge success.
+
+There are several differences between typical regular season games and the 8 "seeding games" that each team would play prior to the playoffs. First, and most obviously, there would be no fans in the arena; this would only complicate the already daunting task of keeping players isolated. Second, because of unusual circumstances, a short timeframe, and resource limitations, the arena they would play in would be much smaller than a typical NBA arena. Finally, there is no travel between games, so the expectation is that players would be more rested and prepared to deal with the grind of the final 8 regular season games.
+
+Although these are just a few of the many differences, these three factors are the main contributors to a growing theory in NBA circles: **players will shoot better in the bubble**. No fans means fewer distractions for every 3-Point shot. No travel means more rested legs, an essential part of shooting for the league's best long-range snipers. The least obvious factor might be the most important one; most basketball players who have shot in a variety of gyms would say that small gyms are easier to shoot in than large ones. Closer walls give the shooter a better idea of how far away the rim is, improving the shooter's depth perception (and possibly 3-point percentage). Do NBA players actually shoot better in the bubble?
+
+### Details
+
+For the purposes of this analysis, I'm only examining 3-point shooting. Many have pointed out the increased 3-point shooting efficiency to explain surprising upsets or the emergence of particularly 3-point reliant teams (such as the Rockets or the Trail Blazers). I'd like to find out if improved percentages from deep are a league-wide trend or whether the bubble's impact on shooting is overblown.
+
+The data is taken from just the 2019-20 regular season and the 8 "seeding games". This is because there are a variety of factors that affect playoff basketball that do not affect seeding games. Each game matters in the context of a playoff series, whereas the seeding games matter more for some teams (lower-seeded teams) than others (higher-seeded teams). Defense in the playoffs is, in general, better, which could bring down percentages for non-bubble related reasons. Another factor is familiarity; because playoff teams square off at least 4 times in a row, playoff defenses can become more familiar with the opponent's offensive tendencies, meaning that better shooters will likely take fewer open shots. For these reasons and more, the playoffs will not be considered in this analysis, but could be in the future.
+
+Shooting data splits based on month are simple to obtain for teams, but more complicated to obtain for individual players. I will first look for patterns of shooting differences by team, and then test whether the overall 3-point conversion rate is different in the bubble than in the regular season on a league-wide basis.
+
+```{r, echo = F}
+bub2 %>% ggplot(aes(x = Tm, y = diff3P, fill = col)) + geom_bar(width = I(0.75), color = "black", stat = "identity") + coord_flip() + scale_y_continuous("Difference in 3-Point Percentage", breaks = -6:6) + scale_x_discrete("") + scale_fill_manual("", values = c("#f7eae0", "#f18973")) + theme_bw() + ggtitle("Bubble 3-Point Shooting", "Regular Season vs. Seeding Games") + geom_vline(xintercept = 10.5, linetype = "dashed") + theme(legend.position = "top") + geom_hline(yintercept = 0)
+```
+
+### Shooting Improvement by Team
+
+The figure above is relatively straightforward; the teams closer to the top are those that shot better in the 8 seeding games than in the regular season prior to the NBA restart. The horizontal axis shows the actual difference in percentage; for example, the Philadelphia 76ers shot 36.2% in the season prior to the restart, and in 8 seeding games, they shot 41.7%, a difference of +5.5%, which is the best improvement in the league.
+
+Interestingly enough, 10 of 22 teams shot worse from 3-point range in the bubble, 1 of 22 (the Oklahoma City Thunder) shot almost exactly the same percentage (35.49% vs. 35.51%), and 11 of 22 teams saw an improvement. This is a surprising result considering the common-held belief that teams would see an uptick in 3-point shooting. Not only that, but only six teams had an improvement of more than 2%.
+
+Generalizations made based on this plot could be biased, and here's why: we are looking at shooting on a team-by-team basis. If the teams who shot a higher percentage in the bubble are actually attempting many more 3-pointers, then overall, there could be some trend that we're not capturing in the plot above. This section illustrates the following position: **only half of NBA teams shot better in the seeding games than in the regular season; therefore, no more than half of teams improved in direct correlation with circumstances created by the bubble.**
+
+To capture the overall trend of the entire league, we can gather every 3-point attempt from before the restart, then gather every 3-point attempt from the 8 seeding games, and then use a statistical test on those league-aggregated proportions to see if they are significantly different based on the sample size.
+
+  ```{r, results='asis', echo=FALSE}
+cat("\\newpage")
+```
+
+```{r, echo = F}
+tot = bub %>% group_by(Bubble) %>% summarise(.groups = "drop", X3P = round(sum(X3P)), X3PA = round(sum(X3PA)))
+tot$prop = paste0(round(100*(tot$X3P/tot$X3PA),3),"%")
+tot2 = as.data.frame(tot)
+tot2$Bubble = ifelse(tot2$Bubble == "No", "Regular Season", "8 Seeding Games")
+names(tot2)[1:4] = c("Pooled", "3-Pointers", "3-Point Attempts", "Percentage")
+
+kable(tot2, caption = "League-Wide 3-Point Shooting, 22 Bubble Teams")
+
+```
+
+### League-Wide Shooting
+
+Now that we have calculated the 3-point percentages for all 22 teams both before and after the restart, we can see a *very* small increase in conversion rates between the observations (just +0.07%). But how important is that difference? To answer that question, we should run a test of significance to see whether it is likely to have happened by chance, or if there is a tangible increase in shooting efficiency in the bubble.
+
+&nbsp;
+
+$H_{0}$: Bubble 3-point percentage $\le$ Regular season 3-point percentage
+
+$H_{1}$: Bubble 3-point percentage > Regular season 3-point percentage
+
+&nbsp;
+
+This test for the difference in proportions is fairly simple; it uses the standard error of the proportions, the sample size, and the actual observed difference to calculate the probability of seeing this improvement if the two proportions were identical in reality. Essentially, if the p-value of our test is below 0.01, the difference is unlikely to be due to chance alone, meaning there is a statistically significant improvement, whereas if the p-value is higher than 0.01, that indicates that the difference could be due to random chance, and therefore, there is no difference between 3-point percentage in the bubble and 3-point percentage in the regular season.
+
+```{r, echo = F}
+tot = bub %>% group_by(Bubble) %>% summarise(.groups = "drop", X3P = sum(X3P), X3PA = sum(X3PA))
+tot$prop = tot$X3P/tot$X3PA
+p1 = tot$prop[1];p2 = tot$prop[2];n1 = tot$X3PA[1];n2 = tot$X3PA[2]
+```
+
+```{r}
+pooled_proportion = p = (p1*n1 + p2*n2)/(n1 + n2) # 0.3622345
+standard_error = se = sqrt(p*(1-p)*((1/n1)+(1/n2))) # 0.006418743
+Z_score = Z = (p1-p2)/se # -0.1323965
+p.value = round(pnorm(q = Z),4)
+
+```
+
+The p-value based on these proportions and sample sizes is `r p.value`. This means that the probability of observing the difference in 3-point shooting we see in the table above given that the percentages are (in reality) equal is `r p.value`. Statistically speaking, this is very high, meaning we fail to reject the claim that the proportions are equal, ultimately concluding that **there is no statistically significant difference between league-wide 3-point percentage in the bubble vs. the regular season**.
+
+### Conclusion and Potential Issues
+
+Although we found no significant difference in 3-point percentage since the NBA restart, there were limitations to this analysis that I should point out: for one, the data is limited; we have each team's performance on 3-pointers, but not much else. If, on *wide-open* 3-point attempts, players are shooting 60% in the bubble compared to only 50% in the regular season, that might indicate that the bubble conditions are allowing wide-open shooters to convert more 3-pointers, but we would not see that in our data.
+
+In another example, if 70% of active players have improved 3-point percentages, but those who are shooting worse are shooting *much* worse, then we could say that the average shooter is hitting threes more frequently, but again, the dataset is not that detailed. 
+
+Ultimately, our analysis has shown that in a macro-level context, **at least half of teams are not shooting significantly better from beyond the arc, and the NBA as a whole is not seeing an increase in 3-point percentage**. Future analysis could be done on shot type, shot difficulty and player-level performance to come to a more absolute conclusion on the effects of the NBA bubble.
+
+
+
+
+
+
