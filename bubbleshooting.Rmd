@@ -49,7 +49,7 @@ The data is taken from just the 2019-20 regular season and the 8 "seeding games"
 Shooting data splits based on month are simple to obtain for teams, but more complicated to obtain for individual players. I will first look for patterns of shooting differences by team, and then test whether the overall 3-point conversion rate is different in the bubble than in the regular season on a league-wide basis.
 
 ```{r, echo = F}
-bub2 %>% ggplot(aes(x = Tm, y = diff3P, fill = col)) + geom_bar(width = I(0.75), color = "black", stat = "identity") + coord_flip() + scale_y_continuous("Difference in 3-Point Percentage", breaks = -6:6) + scale_x_discrete("") + scale_fill_manual("", values = c("#f7eae0", "#f18973")) + theme_bw() + ggtitle("Bubble 3-Point Shooting", "Regular Season vs. Seeding Games") + geom_vline(xintercept = 10.5, linetype = "dashed") + theme(legend.position = "top") + geom_hline(yintercept = 0)
+bub2 %>% ggplot(aes(x = Tm, y = diff3P, fill = col)) + geom_bar(width = I(0.75), color = "black", stat = "identity") + coord_flip() + scale_y_continuous("Difference in 3-Point Percentage", breaks = -6:6) + scale_x_discrete("") + scale_fill_manual("", values = c("#f18973", "#6c9dc6")) + theme_bw() + ggtitle("Bubble 3-Point Shooting", "Regular Season vs. Seeding Games") + geom_vline(xintercept = 10.5, linetype = "dashed") + theme(legend.position = "top") + geom_hline(yintercept = 0)
 ```
 
 ### Shooting Improvement by Team
