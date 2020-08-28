@@ -11,6 +11,8 @@ output:
 library(tidyverse)
 library(rvest)
 library(knitr)
+library(gridExtra)
+
 options(stringsAsFactors = F)
 bub = read.csv("bubbleshooting.csv")[,-1]
 byYr = read.csv("NBA3PbyYear.csv")[,-1] %>% filter(Yr != 2020 & Yr >= 2000)
@@ -51,7 +53,7 @@ The data is taken from just the 2019-20 regular season and the 8 "seeding games"
 Shooting data splits based on month are simple to obtain for teams, but more complicated to obtain for individual players. I will first look for patterns of shooting differences by team, and then test whether the overall 3-point conversion rate is different in the bubble than in the regular season on a league-wide basis.
 
 ```{r, echo = F}
-bub2 %>% ggplot(aes(x = Tm, y = diff3P, fill = col)) + geom_bar(width = I(0.75), color = "black", stat = "identity") + coord_flip() + scale_y_continuous("Difference in 3-Point Percentage", breaks = -6:6) + scale_x_discrete("") + scale_fill_manual("", values = c("#f18973", "#6c9dc6")) + theme_bw() + ggtitle("Bubble 3-Point Shooting", "   Regular Season vs. Seeding Games") + geom_vline(xintercept = 10.5, linetype = "dashed") + theme(legend.position = "top") + geom_hline(yintercept = 0)
+bub2 %>% ggplot(aes(x = Tm, y = diff3P, fill = col)) + geom_bar(width = I(0.75), color = "black", stat = "identity") + coord_flip() + scale_y_continuous("Difference in 3-Point Percentage", breaks = -6:6) + scale_x_discrete("") + scale_fill_manual("", values = c("#f18973", "#6c9dc6")) + theme_bw() + ggtitle("Bubble 3-Point Shooting", "Regular Season vs. Seeding Games") + geom_vline(xintercept = 10.5, linetype = "dashed") + theme(legend.position = "top") + geom_hline(yintercept = 0)
 ```
 
 ### Shooting Improvement by Team
@@ -109,16 +111,9 @@ p.value = round(pnorm(q = Z),4)
 
 The p-value based on these proportions and sample sizes is `r p.value`. This means that the probability of observing the difference in 3-point shooting we see in the table above given that the percentages are (in reality) equal is `r p.value`. Statistically speaking, this is very high, meaning we fail to reject the claim that the proportions are equal, ultimately concluding that **there is no statistically significant difference between league-wide 3-point percentage in the bubble vs. the regular season**.
 
-### Conclusion and Potential Issues
+&nbsp;
 
-Although we found no significant difference in 3-point percentage since the NBA restart, there were limitations to this analysis that I should point out: for one, the data is limited; we have each team's performance on 3-pointers, but not much else. If, on *wide-open* 3-point attempts, players are shooting 60% in the bubble compared to only 50% in the regular season, that might indicate that the bubble conditions are allowing wide-open shooters to convert more 3-pointers, but we would not see that in our data.
-
-In another example, if 70% of active players have improved 3-point percentages, but those who are shooting worse are shooting *much* worse, then we could say that the average shooter is hitting threes more frequently, but again, the dataset is not that detailed. 
-
-Ultimately, our analysis has shown that in a macro-level context, **at least half of teams are not shooting significantly better from beyond the arc, and the NBA as a whole is not seeing an increase in 3-point percentage**. Future analysis could be done on shot type, shot difficulty and player-level performance to come to a more absolute conclusion on the effects of the NBA bubble.
-
-
-```{r, echo = F}
+```{r, echo = F, fig.height=2.5}
 pre.bubble = c(2020.0, tot$X3P[1], tot$X3PA[1])
 pos.bubble = c(2020.5, tot$X3P[2], tot$X3PA[2])
 byYr = byYr %>% rbind.data.frame(pre.bubble, pos.bubble)
@@ -126,9 +121,14 @@ byYr[,2:3] = sapply(byYr[,2:3], as.numeric)
 byYr = byYr %>% mutate(X3P. = (X3P/X3PA)*100)
 byYr$bub = ifelse(byYr$Yr > 2019, ifelse(byYr$Yr > 2020, "2020 NBA Bubble", "Oct. '19 to Mar. '20"), 'previousyrs')
 byYr$bub = factor(byYr$bub, levels = c("previousyrs", "Oct. '19 to Mar. '20", "2020 NBA Bubble"))
-byYr %>% ggplot(aes(x = Yr, y = X3P.)) + geom_line(linetype = "dashed") + geom_point(color = "grey50") + geom_point(data = filter(byYr, bub != "previousyrs"), aes(color = bub)) + theme_bw() + ggtitle("League-Wide NBA 3-Point Percentage", "   Since 2000") + scale_x_continuous(breaks = seq(2000,2020,2)) + scale_color_manual("", values = c("black", "red2")) + scale_y_continuous("3-Point Percentage")
+byYr %>% ggplot(aes(x = Yr, y = X3P.)) + geom_line(linetype = "dashed") + geom_point(color = "grey50") + geom_point(data = filter(byYr, bub != "previousyrs"), aes(color = bub)) + theme_bw() + ggtitle("League-Wide NBA 3-Point Percentage (since 2000)") + scale_x_continuous("", breaks = seq(2000,2020,2)) + scale_color_manual("", values = c("black", "red2")) + scale_y_continuous("3-Point Percentage")
 
 ```
 
+### Conclusion and Potential Issues
 
+Although we found no significant difference in 3-point percentage since the NBA restart, there were limitations to this analysis that I should point out: for one, the data is limited; we have each team's performance on 3-pointers, but not much else. If, on *wide-open* 3-point attempts, players are shooting 60% in the bubble compared to only 50% in the regular season, that might indicate that the bubble conditions are allowing wide-open shooters to convert more 3-pointers, but we would not see that in our data.
 
+In another example, if 70% of active players have improved 3-point percentages, but those who are shooting worse are shooting *much* worse, then we could say that the average shooter is hitting threes more frequently, but again, the dataset is not that detailed. 
+
+Ultimately, our analysis has shown that in a macro-level context, **at least half of teams are not shooting significantly better from beyond the arc, and the NBA as a whole is not seeing an increase in 3-point percentage**. Future analysis could be done on shot type, shot difficulty and player-level performance to come to a more absolute conclusion on the effects of the NBA bubble.
