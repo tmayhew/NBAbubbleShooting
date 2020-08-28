@@ -13,6 +13,8 @@ library(rvest)
 library(knitr)
 options(stringsAsFactors = F)
 bub = read.csv("bubbleshooting.csv")[,-1]
+byYr = read.csv("NBA3PbyYear.csv")[,-1] %>% filter(Yr != 2020 & Yr >= 2000)
+
 bub2 = bub %>% mutate(X2P = XFG - X3P, X2PA = XFGA - X3PA, X3P. = X3P/X3PA, XFG. = XFG/XFGA, X2P. = X2P/X2PA)
 for (i in 1:nrow(bub2)){
   if (i %% 2 == 0){
@@ -49,7 +51,7 @@ The data is taken from just the 2019-20 regular season and the 8 "seeding games"
 Shooting data splits based on month are simple to obtain for teams, but more complicated to obtain for individual players. I will first look for patterns of shooting differences by team, and then test whether the overall 3-point conversion rate is different in the bubble than in the regular season on a league-wide basis.
 
 ```{r, echo = F}
-bub2 %>% ggplot(aes(x = Tm, y = diff3P, fill = col)) + geom_bar(width = I(0.75), color = "black", stat = "identity") + coord_flip() + scale_y_continuous("Difference in 3-Point Percentage", breaks = -6:6) + scale_x_discrete("") + scale_fill_manual("", values = c("#f18973", "#6c9dc6")) + theme_bw() + ggtitle("Bubble 3-Point Shooting", "Regular Season vs. Seeding Games") + geom_vline(xintercept = 10.5, linetype = "dashed") + theme(legend.position = "top") + geom_hline(yintercept = 0)
+bub2 %>% ggplot(aes(x = Tm, y = diff3P, fill = col)) + geom_bar(width = I(0.75), color = "black", stat = "identity") + coord_flip() + scale_y_continuous("Difference in 3-Point Percentage", breaks = -6:6) + scale_x_discrete("") + scale_fill_manual("", values = c("#f18973", "#6c9dc6")) + theme_bw() + ggtitle("Bubble 3-Point Shooting", "   Regular Season vs. Seeding Games") + geom_vline(xintercept = 10.5, linetype = "dashed") + theme(legend.position = "top") + geom_hline(yintercept = 0)
 ```
 
 ### Shooting Improvement by Team
@@ -116,7 +118,17 @@ In another example, if 70% of active players have improved 3-point percentages, 
 Ultimately, our analysis has shown that in a macro-level context, **at least half of teams are not shooting significantly better from beyond the arc, and the NBA as a whole is not seeing an increase in 3-point percentage**. Future analysis could be done on shot type, shot difficulty and player-level performance to come to a more absolute conclusion on the effects of the NBA bubble.
 
 
+```{r, echo = F}
+pre.bubble = c(2020.0, tot$X3P[1], tot$X3PA[1])
+pos.bubble = c(2020.5, tot$X3P[2], tot$X3PA[2])
+byYr = byYr %>% rbind.data.frame(pre.bubble, pos.bubble)
+byYr[,2:3] = sapply(byYr[,2:3], as.numeric)
+byYr = byYr %>% mutate(X3P. = (X3P/X3PA)*100)
+byYr$bub = ifelse(byYr$Yr > 2019, ifelse(byYr$Yr > 2020, "2020 NBA Bubble", "Oct. '19 to Mar. '20"), 'previousyrs')
+byYr$bub = factor(byYr$bub, levels = c("previousyrs", "Oct. '19 to Mar. '20", "2020 NBA Bubble"))
+byYr %>% ggplot(aes(x = Yr, y = X3P.)) + geom_line(linetype = "dashed") + geom_point(color = "grey50") + geom_point(data = filter(byYr, bub != "previousyrs"), aes(color = bub)) + theme_bw() + ggtitle("League-Wide NBA 3-Point Percentage", "   Since 2000") + scale_x_continuous(breaks = seq(2000,2020,2)) + scale_color_manual("", values = c("black", "red2")) + scale_y_continuous("3-Point Percentage")
 
+```
 
 
 
